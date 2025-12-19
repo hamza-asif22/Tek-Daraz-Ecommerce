@@ -50,7 +50,7 @@ const Home = () => {
         <BestSeller />
         <OurPolicy />
         <NewsletterBox />
-        <Footer />
+        {/* <Footer /> */}
       </div>
     </>
   );

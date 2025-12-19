@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { assets } from '../assets/assets';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { backendUrl } from '../App';
 
 const Add = ({ token }) => {
@@ -17,9 +18,63 @@ const Add = ({ token }) => {
   const [subCategory, setSubCategoy] = useState("Mobiles & Tablets")
   const [bestseller, setBestseller] = useState(false)
   const [sizes, setSizes] = useState([])
+  const [isGenerating, setIsGenerating] = useState(false);
+  
 
   // ✅ Use VITE_BACKEND_URL from .env
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
+
+  // ✅ Add your FREE Gemini API key here
+  const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyDcbR4n1gHdhWhq8SJ_azNQOinWDO7ySkg";
+
+  const generateDescription = async () => {
+    if (!name) {
+      toast.error('Please enter a product name first');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const prompt = `Generate a compelling product description for an e-commerce website with the following details:
+
+Product Name: ${name}
+Category: ${category}
+Sub-category: ${subCategory}
+${price ? `Price: $${price}` : ''}
+
+Requirements:
+- Start with 1-2 engaging introductory sentences
+- Then list key features using numbered points (1. 2. 3. etc.)
+- NO asterisks (*), NO bullet points (•), NO markdown formatting
+- Use clean numbered format: "1. Feature description"
+- Make it professional, engaging, and persuasive
+- Highlight 4-6 key features and benefits
+- End with a strong closing sentence
+- The description should be SEO optimized for online shopping
+
+Write the description now:`;
+
+      // Initialize the API
+      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+      
+      // Define the model (The SDK knows the correct URL)
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      // Generate content
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      setDescription(text);
+      toast.success('Description generated successfully!');
+
+    } catch (error) {
+      console.error('Error generating description:', error);
+      toast.error('Error generating description. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
@@ -97,10 +152,6 @@ const Add = ({ token }) => {
         <p className='mb-2 font-bold text-xl'>Product name</p>
         <input onChange={(e) => setName(e.target.value)} value={name} className='w-full max-w-[500px] px-3 py-2 ' type="text" placeholder='Type here' required />
       </div>
-      <div className='w-full'>
-        <p className='mb-2 font-bold text-xl'>Product description</p>
-        <textarea onChange={(e) => setDescription(e.target.value)} value={description} className='w-full max-w-[500px] px-3 py-2 ' type="text" placeholder='Write description here' required />
-      </div>
 
       <div className='flex flex-col sm:flex-row gap-2 w-full sm:gap-8'>
         <div>
@@ -144,6 +195,22 @@ const Add = ({ token }) => {
         <input onChange={() => setBestseller(prev => !prev)} checked={bestseller} type="checkbox" id='bestseller' />
         <label className='cursor-pointer font-bold ' htmlFor="bestseller">Add to bestseller</label>
       </div>
+
+      <div className='w-full'>
+        <div className='flex items-center justify-between mb-2'>
+          <p className='font-bold text-xl'>Product description</p>
+          <button
+            type="button"
+            onClick={generateDescription}
+            disabled={isGenerating || !name}
+            className='px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed'
+          >
+            {isGenerating ? 'Generating...' : 'Generate with AI'}
+          </button>
+        </div>
+        <textarea onChange={(e) => setDescription(e.target.value)} value={description} className='w-full max-w-[500px] px-3 py-2 ' type="text" placeholder='Write description here' required />
+      </div>
+
       <button className='w-24 py-2 mt-4 rounded-2xl bg-black text-white'>ADD</button>
     </form>
   )
